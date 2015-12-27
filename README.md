@@ -90,8 +90,6 @@ Other tools such as `git-annex`, etc. also fall in this category.
 # references
 
 Some use cases that this tool is aimed at solving:
-  * <http://stackoverflow.com/q/18734739/389188>
+  * <http://stackoverflow.com/q/18734739>
   * <http://academia.stackexchange.com/q/8359>
   * <http://academia.stackexchange.com/q/36995>
-
-

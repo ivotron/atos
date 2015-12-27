@@ -61,7 +61,7 @@ func createAndSeedTestRepo(t *testing.T, repoPath string, filesToAdd []string) {
 	err = ioutil.WriteFile(repoPath+"/README", []byte("foo\n"), 0644)
 	assert.Nil(t, err)
 
-	err = ioutil.WriteFile(repoPath+"/.gitignore", []byte(".snapshots"), 0644)
+	err = ioutil.WriteFile(repoPath+"/.gitignore", []byte(".snapshots\n"), 0644)
 	assert.Nil(t, err)
 
 	_, err = runCmd(repoPath, "git add *")

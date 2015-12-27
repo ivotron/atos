@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/tgulacsi/go-locking"
@@ -27,14 +28,15 @@ func (b PosixBackend) Init() (err error) {
 		return
 	}
 
-	// TODO: check if index already exists
+	// TODO: check if /index already exists
 
-	if err = ioutil.WriteFile(b.snapshotsPath+"/index", []byte{' '}, 0644); err != nil {
+	if err = ioutil.WriteFile(b.snapshotsPath+"/index", []byte(""), 0644); err != nil {
 		return
 	}
 
-	str := []byte(b.snapshotsPath + "\n" + b.repoPath)
+	str := []byte(b.snapshotsPath + "\n")
 
+	// TODO: use gcfg instead
 	if err = ioutil.WriteFile(b.repoPath+"/"+b.configFile, str, 0644); err != nil {
 		return
 	}
@@ -80,6 +82,9 @@ func (b PosixBackend) Commit() (v *version, err error) {
 
 	// acquire a lock on the index file
 	flock, err := locking.NewFLock(b.snapshotsPath + "/index")
+	if err != nil {
+		return
+	}
 	if err = flock.Lock(); err != nil {
 		return
 	}
@@ -93,7 +98,7 @@ func (b PosixBackend) Commit() (v *version, err error) {
 		return nil, AnError{"Version " + fmt.Sprintf("%v", v) + " already in index."}
 	}
 
-	if err = createSnapshot(b.snapshotsPath, v, versionedFiles); err != nil {
+	if err = createSnapshot(b.repoPath, b.snapshotsPath, v, versionedFiles); err != nil {
 		return
 	}
 
@@ -104,7 +109,40 @@ func (b PosixBackend) Commit() (v *version, err error) {
 	return
 }
 
-func createSnapshot(snapsPath string, v *version, versionedFiles []string) (err error) {
+func createSnapshot(repoPath string,
+	snapsPath string, v *version, versionedFiles []string) (err error) {
+
+	if err = os.MkdirAll(snapsPath+"/"+v.revision, 0755); err != nil {
+		return
+	}
+
+	unixTime := fmt.Sprintf("%d", v.timestamp.Unix())
+	if err = os.Mkdir(snapsPath+"/"+v.revision+"/"+unixTime, 0755); err != nil {
+		return
+	}
+	destPath := snapsPath + "/" + v.revision + "/" + unixTime
+
+	var args []string
+	args = append(args, "-az")
+	for _, vfile := range versionedFiles {
+		args = append(args, "--exclude="+vfile)
+	}
+
+	args = append(args, "--exclude=.git/")
+
+	if _, err := os.Stat(repoPath + "/.vioignore"); os.IsNotExist(err) == false {
+		args = append(args, "--filter=:-_/.vioignore")
+	}
+
+	// source
+	args = append(args, repoPath+"/")
+
+	// destination
+	args = append(args, destPath)
+
+	_, err = exec.Command("rsync", args...).CombinedOutput()
+
+	return
 }
 
 func addVersionToIndex(v *version, filename string) (err error) {
@@ -126,10 +164,13 @@ func (b PosixBackend) GetVersions() (versions []version, err error) {
 		return
 	}
 
+	versions = []version{}
 	lines := strings.Split(string(contents), "\n")
 	for _, line := range lines {
+		if len(strings.TrimSpace(line)) == 0 {
+			continue
+		}
 		v := *NewVersion(line)
-		fmt.Printf("%v", v)
 		versions = append(versions, v)
 	}
 	return
