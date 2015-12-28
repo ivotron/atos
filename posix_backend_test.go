@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"gopkg.in/ini.v1"
@@ -77,7 +78,7 @@ func TestPosixBackendCommit(t *testing.T) {
 	assert.Nil(t, err)
 
 	// commit everything that is ignored or untracked
-	v, err := backend.Commit()
+	v, err := backend.Commit(map[string]string{})
 	assert.Nil(t, err)
 	assert.NotNil(t, v)
 
@@ -125,7 +126,7 @@ func TestPosixBackendCommitWithIgnore(t *testing.T) {
 	_, err = runCmd(path, "git commit -m committing_vio_ignored_files")
 	assert.Nil(t, err)
 
-	v, err := backend.Commit()
+	v, err := backend.Commit(map[string]string{})
 	assert.Nil(t, err)
 	assert.NotNil(t, v)
 
@@ -150,16 +151,46 @@ func TestPosixBackendCommitWithIgnore(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 }
 
+func TestPosixBackendCommitWithTags(t *testing.T) {
+	path, err := ioutil.TempDir("", "testing")
+	assert.Nil(t, os.Chdir(path))
+
+	createAndSeedTestRepo(t, path, []string{})
+
+	backend := getNewPosixBackend(t, path)
+
+	err = backend.Init()
+	assert.Nil(t, err)
+
+	err = ioutil.WriteFile(path+"/bar", []byte("yeah"), 0644)
+	assert.Nil(t, err)
+	err = ioutil.WriteFile(path+"/toz", []byte("ok"), 0644)
+	assert.Nil(t, err)
+
+	// commit everything that is ignored or untracked
+	v, err := backend.Commit(map[string]string{"foo": "bar", "hello": "goodbye"})
+	assert.Nil(t, err)
+	assert.NotNil(t, v)
+
+	contents, err := ioutil.ReadFile(path + "/.snapshots/index")
+	assert.Nil(t, err)
+	assert.Equal(t, strings.TrimSpace(string(contents)), fmt.Sprintf("%v", v))
+}
+
 func TestPosixBackendAddVersionToIndex(t *testing.T) {
 	path, err := ioutil.TempDir("", "testing")
 	assert.Nil(t, os.Chdir(path))
 
-	v1_str := "1234567890#1405544146\n"
-	v2_str := "5713943128#2435869343\n"
+	v1_str := "1234567890#1405544146"
+	v2_str := "5713943128#2435869343"
 	v1 := NewVersion(v1_str)
 	assert.NotNil(t, v1)
 	v2 := NewVersion(v2_str)
 	assert.NotNil(t, v2)
+	meta := map[string]string{"foo": "bar", "hello": "goodbye"}
+	v3_str := "3943943128#5635869343"
+	v3 := NewVersionWithMeta(v3_str, meta)
+	assert.NotNil(t, v3)
 
 	err = ioutil.WriteFile(path+"/index", []byte(""), 0644)
 	assert.Nil(t, err)
@@ -168,13 +199,20 @@ func TestPosixBackendAddVersionToIndex(t *testing.T) {
 	assert.Nil(t, err)
 	actual_str, err := ioutil.ReadFile(path + "/index")
 	assert.Nil(t, err)
-	assert.Equal(t, string(actual_str), v1_str)
+	assert.Equal(t, string(actual_str), v1_str+",{}\n")
 
 	err = addVersionToIndex(v2, path+"/index")
 	assert.Nil(t, err)
 	actual_str, err = ioutil.ReadFile(path + "/index")
 	assert.Nil(t, err)
-	assert.Equal(t, string(actual_str), v1_str+v2_str)
+	assert.Equal(t, string(actual_str), v1_str+",{}\n"+v2_str+",{}\n")
+
+	err = addVersionToIndex(v3, path+"/index")
+	assert.Nil(t, err)
+	actual_str, err = ioutil.ReadFile(path + "/index")
+	assert.Nil(t, err)
+	assert.Equal(t, string(actual_str),
+		v1_str+",{}\n"+v2_str+",{}\n"+v3_str+","+"{\"foo\":\"bar\",\"hello\":\"goodbye\"}\n")
 }
 
 func TestPosixBackendGetVersions(t *testing.T) {

@@ -1,6 +1,7 @@
 package vio
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"reflect"
@@ -21,6 +22,7 @@ const (
 type version struct {
 	revision  string
 	timestamp time.Time
+	meta      map[string]string
 }
 
 func NewVersion(revision string) *version {
@@ -31,9 +33,35 @@ func NewVersion(revision string) *version {
 		if err != nil {
 			panic(err)
 		}
-		return &version{revision: fields[0], timestamp: time.Unix(i, 0)}
+		return &version{
+			revision:  fields[0],
+			timestamp: time.Unix(i, 0),
+			meta:      map[string]string{}}
 	} else {
-		return &version{revision: fields[0], timestamp: time.Now()}
+		return &version{
+			revision:  fields[0],
+			timestamp: time.Now(),
+			meta:      map[string]string{}}
+	}
+}
+
+func NewVersionWithMeta(revision string, meta map[string]string) *version {
+	fields := strings.Split(revision, "#")
+
+	if len(fields) == 2 {
+		i, err := strconv.ParseInt(strings.TrimSpace(fields[1]), 10, 64)
+		if err != nil {
+			panic(err)
+		}
+		return &version{
+			revision:  fields[0],
+			timestamp: time.Unix(i, 0),
+			meta:      meta}
+	} else {
+		return &version{
+			revision:  fields[0],
+			timestamp: time.Now(),
+			meta:      meta}
 	}
 }
 
@@ -47,7 +75,11 @@ func ContainsVersion(vs []version, v *version) bool {
 }
 
 func (v *version) String() string {
-	return fmt.Sprintf("%s#%d", v.revision, v.timestamp.Unix())
+	s, err := json.Marshal(v.meta)
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("%s#%d,%s", v.revision, v.timestamp.Unix(), s)
 }
 
 type Backend interface {
@@ -67,7 +99,7 @@ type Backend interface {
 	Checkout(v *version) error
 
 	// commits a version.
-	Commit() (*version, error)
+	Commit(meta map[string]string) (*version, error)
 
 	// retrieves the string representation of the diff for a path
 	Diff(v1 *version, v2 *version, path string) (string, error)
@@ -121,7 +153,7 @@ func Init(snapsPath string, backend string) (err error) {
 	return opts.SaveTo(".vioconfig")
 }
 
-func Commit() (err error) {
+func Commit(meta string) (err error) {
 	opts, err := ini.Load(".vioconfig")
 	if err != nil {
 		return
@@ -130,7 +162,12 @@ func Commit() (err error) {
 	if err != nil {
 		return
 	}
-	_, err = b.Commit()
+	var t map[string]string
+	err = json.Unmarshal([]byte(meta), &t)
+	if err != nil {
+		return
+	}
+	_, err = b.Commit(t)
 
 	return
 }

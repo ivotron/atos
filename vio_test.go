@@ -72,14 +72,27 @@ func TestCmdCommitPosix(t *testing.T) {
 	assert.Nil(t, err)
 	err = ioutil.WriteFile(path+"/toz", []byte("ok"), 0644)
 	assert.Nil(t, err)
-	err = Commit()
+	err = Commit("{}")
+	assert.Nil(t, err)
+}
+func TestCmdCommitPosixWithMeta(t *testing.T) {
+	path, err := ioutil.TempDir("", "testing")
+	assert.Nil(t, os.Chdir(path))
+	createAndSeedTestRepo(t, path, []string{})
+	err = Init(".snapshots", "posix")
+	assert.Nil(t, err)
+	err = ioutil.WriteFile(path+"/bar", []byte("yeah"), 0644)
+	assert.Nil(t, err)
+	err = ioutil.WriteFile(path+"/toz", []byte("ok"), 0644)
+	assert.Nil(t, err)
+	err = Commit("{\"foo\": \"bar\", \"hello\":\"goodbye\"}")
 	assert.Nil(t, err)
 }
 
 func TestVersionToString(t *testing.T) {
 	v := NewVersion("1234567890")
 	assert.NotNil(t, v)
-	assert.Equal(t, fmt.Sprintf("%v", v), "1234567890#"+fmt.Sprint(v.timestamp.Unix()))
+	assert.Equal(t, fmt.Sprintf("%v", v), "1234567890#"+fmt.Sprint(v.timestamp.Unix())+",{}")
 
 	ts_str := "1405544146"
 	v = NewVersion("1234567890#" + ts_str)
@@ -89,7 +102,7 @@ func TestVersionToString(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, ts)
 	assert.NotNil(t, v)
-	assert.Equal(t, fmt.Sprintf("%v", v), "1234567890#"+ts_str)
+	assert.Equal(t, fmt.Sprintf("%v", v), "1234567890#"+ts_str+",{}")
 }
 
 func TestContainsVersion(t *testing.T) {
@@ -107,4 +120,15 @@ func TestContainsVersion(t *testing.T) {
 	vs = append(vs, *NewVersion("5713943128#2435869343"))
 	assert.True(t, ContainsVersion(vs, v1))
 	assert.True(t, ContainsVersion(vs, v2))
+}
+
+func TestVersionMeta(t *testing.T) {
+	v := NewVersion("1234567890")
+	assert.NotNil(t, v)
+	assert.Equal(t, v.meta, map[string]string{})
+
+	meta := map[string]string{"foo": "bar", "hello": "goodbye"}
+	v = NewVersionWithMeta("1234567890", meta)
+	assert.NotNil(t, v)
+	assert.Equal(t, v.meta, meta)
 }

@@ -1,6 +1,7 @@
 package vio
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -60,7 +61,7 @@ func (b PosixBackend) Checkout(v *version) error {
 	return AnError{"not yet"}
 }
 
-func (b PosixBackend) Commit() (v *version, err error) {
+func (b PosixBackend) Commit(meta map[string]string) (v *version, err error) {
 	if !b.IsInitialized() {
 		return nil, AnError{"Uninitialized repository."}
 	}
@@ -84,7 +85,7 @@ func (b PosixBackend) Commit() (v *version, err error) {
 		return
 	}
 
-	v = NewVersion(id)
+	v = NewVersionWithMeta(id, meta)
 
 	// acquire a lock on the index file
 	flock, err := locking.NewFLock(b.snapshotsPath + "/index")
@@ -176,7 +177,21 @@ func (b PosixBackend) GetVersions() (versions []version, err error) {
 		if len(strings.TrimSpace(line)) == 0 {
 			continue
 		}
-		v := *NewVersion(line)
+		i := strings.Index(line, ",")
+		if i < 0 {
+			return nil, AnError{"Malformed version in index: " + line}
+		}
+		v_str := line[:i]
+		meta_str := line[i+1:]
+
+		var meta map[string]string
+
+		err = json.Unmarshal([]byte(meta_str), &meta)
+		if err != nil {
+			return
+		}
+
+		v := *NewVersionWithMeta(v_str, meta)
 		versions = append(versions, v)
 	}
 	return
