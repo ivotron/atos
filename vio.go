@@ -91,16 +91,6 @@ func InstantiateBackend(opts *ini.File) (backend Backend, err error) {
 	default:
 		return nil, AnError{"unknown backend " + backendType}
 	}
-
-	//if err != nil {
-	//return
-	//}
-
-	//_, ok = backend.(Backend)
-	//if !ok {
-	//return nil, AnE
-	//}
-
 	return
 }
 
@@ -125,4 +115,18 @@ func Init(repoPath string, snapsPath string, backend string) (err error) {
 	}
 
 	return opts.SaveTo(repoPath + "/.vioconfig")
+}
+
+func Commit() (err error) {
+	opts, err := ini.Load(".vioconfig")
+	if err != nil {
+		return
+	}
+	b, err := InstantiateBackend(opts)
+	if err != nil {
+		return
+	}
+	_, err = b.Commit()
+
+	return
 }
