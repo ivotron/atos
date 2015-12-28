@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"path/filepath"
 
 	"github.com/ivotron/vio"
 	"github.com/spf13/cobra"
@@ -16,12 +15,7 @@ var initCmd = &cobra.Command{
 	Short: "initializes the vio repo",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		repoPath, err := filepath.Abs(".")
-		if err != nil {
-			log.Fatalln(err.Error())
-		}
-		err = vio.Init(repoPath, snapPath, backend)
-		if err != nil {
+		if err := vio.Init(snapPath, backend); err != nil {
 			log.Fatalln(err.Error())
 		}
 	},

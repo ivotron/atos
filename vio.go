@@ -84,6 +84,7 @@ func (e AnError) Error() string {
 }
 
 func InstantiateBackend(opts *ini.File) (backend Backend, err error) {
+	opts.Section("").Key("repo_path").SetValue(".")
 	backendType := opts.Section("").Key("backend_type").Value()
 	switch backendType {
 	case "posix":
@@ -94,13 +95,13 @@ func InstantiateBackend(opts *ini.File) (backend Backend, err error) {
 	return
 }
 
-func Init(repoPath string, snapsPath string, backend string) (err error) {
+func Init(snapsPath string, backend string) (err error) {
 	if _, err = os.Stat(".vioconfig"); err == nil {
 		return
 	}
 
 	opts := ini.Empty()
-	opts.Section("").Key("repo_path").SetValue(repoPath)
+	opts.Section("").Key("repo_path").SetValue(".")
 	opts.Section("").Key("snapshots_path").SetValue(snapsPath)
 	opts.Section("").Key("backend_type").SetValue(backend)
 
@@ -114,7 +115,9 @@ func Init(repoPath string, snapsPath string, backend string) (err error) {
 		return
 	}
 
-	return opts.SaveTo(repoPath + "/.vioconfig")
+	opts.Section("").DeleteKey("repo_path")
+
+	return opts.SaveTo(".vioconfig")
 }
 
 func Commit() (err error) {
