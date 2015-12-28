@@ -6,22 +6,31 @@ import (
 	"os"
 	"testing"
 
+	"gopkg.in/ini.v1"
+
 	"github.com/stretchr/testify/assert"
 )
+
+func getNewPosixBackend(t *testing.T, path string) (b Backend) {
+	opts := ini.Empty()
+	assert.NotNil(t, opts)
+
+	opts.Section("").Key("repo_path").SetValue(path)
+	opts.Section("").Key("snapshots_path").SetValue(path + "/.snapshots")
+	opts.Section("").Key("backend_type").SetValue("posix")
+
+	b, err := InstantiateBackend(opts)
+	assert.NotNil(t, b)
+	assert.Nil(t, err)
+
+	return
+}
 
 func TestPosixBackendInitWithUninitializedRepo(t *testing.T) {
 	path, err := ioutil.TempDir("", "testing")
 	assert.Nil(t, os.Chdir(path))
 
-	opts := NewOptions()
-	assert.NotNil(t, opts)
-
-	opts.RepoPath = path
-	opts.SnapshotsPath = path + "/.snapshots"
-
-	backend, err := NewPosixBackend(opts)
-	assert.NotNil(t, backend)
-	assert.Nil(t, err)
+	backend := getNewPosixBackend(t, path)
 
 	assert.False(t, backend.IsInitialized())
 	err = backend.Init()
@@ -30,14 +39,7 @@ func TestPosixBackendInitWithUninitializedRepo(t *testing.T) {
 	assert.True(t, backend.IsInitialized())
 
 	_, err = os.Stat(path + "/.snapshots/index")
-	assert.False(t, os.IsNotExist(err))
-
-	_, err = os.Stat(path + "/" + opts.ConfigFile)
-	assert.False(t, os.IsNotExist(err))
-
-	expected_str := []byte(path + "/.snapshots\n")
-	actual_str, err := ioutil.ReadFile(path + "/" + opts.ConfigFile)
-	assert.Equal(t, actual_str, expected_str)
+	assert.Nil(t, err)
 }
 
 func TestPosixBackendInitWithInitializedRepo(t *testing.T) {
@@ -46,15 +48,7 @@ func TestPosixBackendInitWithInitializedRepo(t *testing.T) {
 
 	createAndSeedTestRepo(t, path, []string{})
 
-	opts := NewOptions()
-	assert.NotNil(t, opts)
-
-	opts.RepoPath = path
-	opts.SnapshotsPath = path + "/.snapshots"
-
-	backend, err := NewPosixBackend(opts)
-	assert.NotNil(t, backend)
-	assert.Nil(t, err)
+	backend := getNewPosixBackend(t, path)
 
 	assert.False(t, backend.IsInitialized())
 	err = backend.Init()
@@ -63,14 +57,7 @@ func TestPosixBackendInitWithInitializedRepo(t *testing.T) {
 	assert.True(t, backend.IsInitialized())
 
 	_, err = os.Stat(path + "/.snapshots/index")
-	assert.False(t, os.IsNotExist(err))
-
-	_, err = os.Stat(path + "/" + opts.ConfigFile)
-	assert.False(t, os.IsNotExist(err))
-
-	expected_str := []byte(path + "/.snapshots\n")
-	actual_str, err := ioutil.ReadFile(path + "/" + opts.ConfigFile)
-	assert.Equal(t, actual_str, expected_str)
+	assert.Nil(t, err)
 }
 
 func TestPosixBackendCommit(t *testing.T) {
@@ -79,15 +66,7 @@ func TestPosixBackendCommit(t *testing.T) {
 
 	createAndSeedTestRepo(t, path, []string{})
 
-	opts := NewOptions()
-	assert.NotNil(t, opts)
-
-	opts.RepoPath = path
-	opts.SnapshotsPath = path + "/.snapshots"
-
-	backend, err := NewPosixBackend(opts)
-	assert.NotNil(t, backend)
-	assert.Nil(t, err)
+	backend := getNewPosixBackend(t, path)
 
 	err = backend.Init()
 	assert.Nil(t, err)
@@ -95,10 +74,6 @@ func TestPosixBackendCommit(t *testing.T) {
 	err = ioutil.WriteFile(path+"/bar", []byte("yeah"), 0644)
 	assert.Nil(t, err)
 	err = ioutil.WriteFile(path+"/toz", []byte("ok"), 0644)
-	assert.Nil(t, err)
-	_, err = runCmd(path, "git add .vioconfig")
-	assert.Nil(t, err)
-	_, err = runCmd(path, "git commit -m committing_vioconfig_file")
 	assert.Nil(t, err)
 
 	// commit everything that is ignored or untracked
@@ -108,17 +83,15 @@ func TestPosixBackendCommit(t *testing.T) {
 
 	snapPath := path + "/.snapshots/" + v.revision
 	_, err = os.Stat(snapPath)
-	assert.False(t, os.IsNotExist(err))
+	assert.Nil(t, err)
 
 	unixTime := fmt.Sprintf("%d", v.timestamp.Unix())
 	_, err = os.Stat(snapPath + "/" + unixTime + "/toz")
-	assert.False(t, os.IsNotExist(err))
+	assert.Nil(t, err)
 	_, err = os.Stat(snapPath + "/" + unixTime + "/bar")
-	assert.False(t, os.IsNotExist(err))
+	assert.Nil(t, err)
 
 	_, err = os.Stat(snapPath + "/" + unixTime + "/.git")
-	assert.True(t, os.IsNotExist(err))
-	_, err = os.Stat(snapPath + "/" + unixTime + "/.vioconfig")
 	assert.True(t, os.IsNotExist(err))
 	_, err = os.Stat(snapPath + "/" + unixTime + "/README")
 	assert.True(t, os.IsNotExist(err))
@@ -132,15 +105,7 @@ func TestPosixBackendCommitWithIgnore(t *testing.T) {
 
 	createAndSeedTestRepo(t, path, []string{})
 
-	opts := NewOptions()
-	assert.NotNil(t, opts)
-
-	opts.RepoPath = path
-	opts.SnapshotsPath = path + "/.snapshots"
-
-	backend, err := NewPosixBackend(opts)
-	assert.NotNil(t, backend)
-	assert.Nil(t, err)
+	backend := getNewPosixBackend(t, path)
 
 	err = backend.Init()
 	assert.Nil(t, err)
@@ -155,9 +120,9 @@ func TestPosixBackendCommitWithIgnore(t *testing.T) {
 	assert.Nil(t, err)
 	err = ioutil.WriteFile(path+"/ignored_folder/foo", []byte("ignore this\n"), 0644)
 	assert.Nil(t, err)
-	_, err = runCmd(path, "git add .vioconfig .vioignore")
+	_, err = runCmd(path, "git add .vioignore")
 	assert.Nil(t, err)
-	_, err = runCmd(path, "git commit -m committing_vio_files")
+	_, err = runCmd(path, "git commit -m committing_vio_ignored_files")
 	assert.Nil(t, err)
 
 	v, err := backend.Commit()
@@ -166,20 +131,18 @@ func TestPosixBackendCommitWithIgnore(t *testing.T) {
 
 	snapPath := path + "/.snapshots/" + v.revision
 	_, err = os.Stat(snapPath)
-	assert.False(t, os.IsNotExist(err))
+	assert.Nil(t, err)
 
 	unixTime := fmt.Sprintf("%d", v.timestamp.Unix())
 	_, err = os.Stat(snapPath + "/" + unixTime + "/toz")
-	assert.False(t, os.IsNotExist(err))
+	assert.Nil(t, err)
 	_, err = os.Stat(snapPath + "/" + unixTime + "/bar")
-	assert.False(t, os.IsNotExist(err))
+	assert.Nil(t, err)
 
 	_, err = os.Stat(snapPath + "/" + unixTime + "/ignored_folder")
 	assert.True(t, os.IsNotExist(err))
 
 	_, err = os.Stat(snapPath + "/" + unixTime + "/.git")
-	assert.True(t, os.IsNotExist(err))
-	_, err = os.Stat(snapPath + "/" + unixTime + "/.vioconfig")
 	assert.True(t, os.IsNotExist(err))
 	_, err = os.Stat(snapPath + "/" + unixTime + "/README")
 	assert.True(t, os.IsNotExist(err))
@@ -218,13 +181,7 @@ func TestPosixBackendGetVersions(t *testing.T) {
 	path, err := ioutil.TempDir("", "testing")
 	assert.Nil(t, os.Chdir(path))
 
-	opts := NewOptions()
-	assert.NotNil(t, opts)
-
-	opts.RepoPath = path
-	opts.SnapshotsPath = path + "/.snapshots"
-
-	backend, err := NewPosixBackend(opts)
+	backend := getNewPosixBackend(t, path)
 
 	err = os.Mkdir(path+"/.snapshots", 0755)
 	assert.Nil(t, err)

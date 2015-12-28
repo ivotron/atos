@@ -7,20 +7,26 @@ import (
 	"os/exec"
 	"strings"
 
+	"gopkg.in/ini.v1"
+
 	"github.com/tgulacsi/go-locking"
 )
 
 type PosixBackend struct {
 	snapshotsPath string
 	repoPath      string
-	configFile    string
 }
 
-func NewPosixBackend(o Options) (b *PosixBackend, err error) {
+func NewPosixBackend(o *ini.File) (b Backend, err error) {
+	if !o.Section("").HasKey("snapshots_path") {
+		return nil, AnError{"Expecting key 'snapshots_path' in configuration."}
+	}
+	if !o.Section("").HasKey("repo_path") {
+		return nil, AnError{"Expecting key 'repo_path' in configuration."}
+	}
 	return &PosixBackend{
-		snapshotsPath: o.SnapshotsPath,
-		repoPath:      o.RepoPath,
-		configFile:    o.ConfigFile}, nil
+		snapshotsPath: o.Section("").Key("snapshots_path").String(),
+		repoPath:      o.Section("").Key("repo_path").String()}, nil
 }
 
 func (b PosixBackend) Init() (err error) {
@@ -28,21 +34,17 @@ func (b PosixBackend) Init() (err error) {
 		return
 	}
 
-	// TODO: check if /index already exists
+	if _, err = os.Stat(b.snapshotsPath + "/index"); err == nil {
+		return AnError{"Repository already initialized"}
+	}
 
 	if err = ioutil.WriteFile(b.snapshotsPath+"/index", []byte(""), 0644); err != nil {
 		return
 	}
 
-	str := []byte(b.snapshotsPath + "\n")
-
-	// TODO: use gcfg instead
-	if err = ioutil.WriteFile(b.repoPath+"/"+b.configFile, str, 0644); err != nil {
-		return
-	}
-
 	return
 }
+
 func (b PosixBackend) Open() error {
 	return nil
 }
@@ -59,6 +61,10 @@ func (b PosixBackend) Checkout(v *version) error {
 }
 
 func (b PosixBackend) Commit() (v *version, err error) {
+	if !b.IsInitialized() {
+		return nil, AnError{"Uninitialized repository."}
+	}
+
 	has, err := HasUncommittedChanges(b.repoPath)
 
 	if err != nil {

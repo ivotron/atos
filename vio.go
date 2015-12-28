@@ -2,9 +2,12 @@ package vio
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"time"
+
+	"gopkg.in/ini.v1"
 )
 
 type Status int
@@ -65,10 +68,10 @@ type Backend interface {
 	// commits a version.
 	Commit() (*version, error)
 
-	// retrieves the string representation of the diff for an object
-	Diff(v1 *version, v2 *version, obj string) (string, error)
+	// retrieves the string representation of the diff for a path
+	Diff(v1 *version, v2 *version, path string) (string, error)
 
-	// return the list
+	// returns list of committed versions
 	GetVersions() (versions []version, err error)
 }
 
@@ -78,4 +81,48 @@ type AnError struct {
 
 func (e AnError) Error() string {
 	return e.Msg
+}
+
+func InstantiateBackend(opts *ini.File) (backend Backend, err error) {
+	backendType := opts.Section("").Key("backend_type").Value()
+	switch backendType {
+	case "posix":
+		backend, err = NewPosixBackend(opts)
+	default:
+		return nil, AnError{"unknown backend " + backendType}
+	}
+
+	//if err != nil {
+	//return
+	//}
+
+	//_, ok = backend.(Backend)
+	//if !ok {
+	//return nil, AnE
+	//}
+
+	return
+}
+
+func Init(repoPath string, snapsPath string, backend string) (err error) {
+	if _, err = os.Stat(".vioconfig"); err == nil {
+		return
+	}
+
+	opts := ini.Empty()
+	opts.Section("").Key("repo_path").SetValue(repoPath)
+	opts.Section("").Key("snapshots_path").SetValue(snapsPath)
+	opts.Section("").Key("backend_type").SetValue(backend)
+
+	b, err := InstantiateBackend(opts)
+	if err != nil {
+		return
+	}
+
+	err = b.Init()
+	if err != nil {
+		return
+	}
+
+	return opts.SaveTo(repoPath + "/.vioconfig")
 }
