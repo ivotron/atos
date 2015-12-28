@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,14 +24,14 @@ type version struct {
 }
 
 func NewVersion(revision string) *version {
-	fields := strings.Fields(revision)
+	fields := strings.Split(revision, "#")
 
 	if len(fields) == 2 {
-		ts, err := time.Parse(time.RFC3339, fields[1])
+		i, err := strconv.ParseInt(strings.TrimSpace(fields[1]), 10, 64)
 		if err != nil {
 			panic(err)
 		}
-		return &version{revision: fields[0], timestamp: ts}
+		return &version{revision: fields[0], timestamp: time.Unix(i, 0)}
 	} else {
 		return &version{revision: fields[0], timestamp: time.Now()}
 	}
@@ -46,7 +47,7 @@ func ContainsVersion(vs []version, v *version) bool {
 }
 
 func (v *version) String() string {
-	return fmt.Sprintf("%s %s", v.revision, v.timestamp.Format(time.RFC3339))
+	return fmt.Sprintf("%s#%d", v.revision, v.timestamp.Unix())
 }
 
 type Backend interface {

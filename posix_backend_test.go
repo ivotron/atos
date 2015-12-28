@@ -154,8 +154,8 @@ func TestPosixBackendAddVersionToIndex(t *testing.T) {
 	path, err := ioutil.TempDir("", "testing")
 	assert.Nil(t, os.Chdir(path))
 
-	v1_str := "1234567890 2012-11-01T22:08:41Z\n"
-	v2_str := "5713943128 2015-02-03T23:59:12Z\n"
+	v1_str := "1234567890#1405544146\n"
+	v2_str := "5713943128#2435869343\n"
 	v1 := NewVersion(v1_str)
 	assert.NotNil(t, v1)
 	v2 := NewVersion(v2_str)
@@ -193,9 +193,9 @@ func TestPosixBackendGetVersions(t *testing.T) {
 	assert.NotNil(t, vs)
 	assert.Equal(t, len(vs), 0)
 
-	v1 := NewVersion("1234567890 2012-11-01T22:08:41Z")
+	v1 := NewVersion("1234567890#1405544146")
 	assert.NotNil(t, v1)
-	v2 := NewVersion("5713943128 2015-02-03T23:59:12Z")
+	v2 := NewVersion("5713943128#2435869343")
 	assert.NotNil(t, v2)
 
 	err = addVersionToIndex(v1, path+"/.snapshots/index")
