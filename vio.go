@@ -21,6 +21,7 @@ const (
 
 type version struct {
 	revision  string
+	message   string
 	timestamp time.Time
 	meta      map[string]string
 }
@@ -35,11 +36,13 @@ func NewVersion(revision string) *version {
 		}
 		return &version{
 			revision:  fields[0],
+			message:   "",
 			timestamp: time.Unix(i, 0),
 			meta:      map[string]string{}}
 	} else {
 		return &version{
 			revision:  fields[0],
+			message:   "",
 			timestamp: time.Now(),
 			meta:      map[string]string{}}
 	}
@@ -55,11 +58,13 @@ func NewVersionWithMeta(revision string, meta map[string]string) *version {
 		}
 		return &version{
 			revision:  fields[0],
+			message:   "",
 			timestamp: time.Unix(i, 0),
 			meta:      meta}
 	} else {
 		return &version{
 			revision:  fields[0],
+			message:   "",
 			timestamp: time.Now(),
 			meta:      meta}
 	}
@@ -153,21 +158,45 @@ func Init(snapsPath string, backend string) (err error) {
 	return opts.SaveTo(".vioconfig")
 }
 
-func Commit(meta string) (err error) {
+func load() (b Backend, err error) {
 	opts, err := ini.Load(".vioconfig")
 	if err != nil {
 		return
 	}
-	b, err := InstantiateBackend(opts)
-	if err != nil {
-		return
-	}
+	b, err = InstantiateBackend(opts)
+	return
+}
+
+func Commit(meta string) (err error) {
 	var t map[string]string
 	err = json.Unmarshal([]byte(meta), &t)
 	if err != nil {
 		return
 	}
+	b, err := load()
+	if err != nil {
+		return
+	}
 	_, err = b.Commit(t)
 
+	return
+}
+
+func Log() (logstr string, err error) {
+	b, err := load()
+	if err != nil {
+		return
+	}
+	versions, err := b.GetVersions()
+	if err != nil {
+		return
+	}
+	for _, v := range versions {
+		logstr = logstr +
+			fmt.Sprintf("%s-%s %s\n",
+				v.revision,
+				v.timestamp.Format("06/01/02:0700"),
+				v.message)
+	}
 	return
 }
