@@ -3,13 +3,15 @@
 Versioning for input/output files.
 
 When working with a version-controlled project, we often use/obtain 
-artifacts (conf files, logs, figures, etc.) for/from programs that 
-correspond to a particular version of the project. After a couple of 
-executions, it quickly becomes difficult to keep track of what 
-versions of the project consumed/generated which files. `vio` helps to 
-deal with this issue by allowing a user to create a snapshot of the 
-unversioned files after a program has executed, and to store and 
-associate this snapshot with the latest revision of the project.
+artifacts (configuration files, logs, measurements, figures, etc.) 
+for/from programs that correspond to a particular version of the 
+project, but that are not part of it (i.e. not being kept track by the 
+VCS). After a couple of executions, it quickly becomes difficult to 
+keep track of what versions of the project consumed/generated which 
+files. `vio` helps to deal with this issue by allowing a user to 
+create a snapshot of the unversioned files after a program has 
+executed, and to store and associate this snapshot with the latest 
+revision of the project.
 
 ## Example
 
@@ -22,10 +24,14 @@ cd project
 git add -u
 git commit -m "I worked hard and implemented many things"
 
-# execute and generate some results
-exec program -c params.conf
+# parametrize execution
+echo "my configs for a particular execution" > params.conf
 
-# commit anything that is not being tracked by git
+# execute and generate some results
+exec program -c params.conf > execution.out
+
+# commit anything that is not being tracked by git. In this
+# particular case, files params.conf and execution.out
 vio commit -m "the result of my hard work"
 ```
 
@@ -39,8 +45,8 @@ In a nutshell, vio:
     execution ID (`commit_id + timestamp`).
  4. Provides versioning-semantics for datasets, allowing users to 
     compare between distinct versions.
- 5. Stores metadata for a dataset, allowing users to annotate and 
-    contextualize unversioned files for future introspection.
+ 5. Stores metadata for datasets, allowing users to annotate and 
+    contextualize them for future introspection.
 
 The vio's "database" has the following schema:
 
@@ -48,7 +54,13 @@ The vio's "database" has the following schema:
  commit_id | execution_id | vio_commit_message | files | metadata |
 ```
 
-## Multiple executions
+`commit_id` corresponds to the version in a VCS while `execution_id` 
+to a timestamp obtained at the moment when the snapshot is created. 
+`files` is the working directory snapshot of all unversioned files. 
+Lastly, `metadata` is a collection of key-value pairs.
+
+<!--
+Multiple executions
 
 One common use case is to compare results from multiple executions:
 
@@ -60,6 +72,7 @@ ca82a6df:20151123:184832 and now with conf2
 ```
 
 **TODO**
+-->
 
 # vio vs. other tools
 
@@ -85,7 +98,6 @@ Other tools such as `git-annex`, etc. also fall in this category.
 ## CI tools
 
 **TODO**
-
 
 # references
 

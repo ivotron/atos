@@ -22,6 +22,6 @@ var commitCmd = &cobra.Command{
 
 func init() {
 	RootCmd.AddCommand(commitCmd)
-	initCmd.Flags().StringVarP(&meta,
+	commitCmd.Flags().StringVarP(&meta,
 		"meta", "", "{}", "JSON-formatted string of key-value pairs")
 }

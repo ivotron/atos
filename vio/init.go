@@ -12,8 +12,8 @@ var backend string
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "initializes the vio repo",
-	Long:  ``,
+	Short: "Initializes the vio repo.",
+	Long:  `Initializes a vio repository. The value for --backend can be one of 'git', 'posix' or 'git-lfs'`,
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := vio.Init(snapPath, backend); err != nil {
 			log.Fatalln(err.Error())
@@ -26,5 +26,5 @@ func init() {
 	initCmd.Flags().StringVarP(&snapPath,
 		"snapshots", "s", ".snapshots", "Path to where snapshots are stored")
 	initCmd.Flags().StringVarP(&backend,
-		"backend", "b", "posix", "Backend to manage snapshots (one of 'git', 'posix' or 'git-lfs')")
+		"backend", "b", "posix", "Backend to manage snapshots")
 }
