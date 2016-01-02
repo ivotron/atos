@@ -72,7 +72,7 @@ func TestCmdCommitPosix(t *testing.T) {
 	assert.Nil(t, err)
 	err = ioutil.WriteFile(path+"/toz", []byte("ok"), 0644)
 	assert.Nil(t, err)
-	err = Commit("{}")
+	err = Commit("msg", "{}")
 	assert.Nil(t, err)
 }
 func TestCmdCommitPosixWithMeta(t *testing.T) {
@@ -85,7 +85,7 @@ func TestCmdCommitPosixWithMeta(t *testing.T) {
 	assert.Nil(t, err)
 	err = ioutil.WriteFile(path+"/toz", []byte("ok"), 0644)
 	assert.Nil(t, err)
-	err = Commit("{\"foo\": \"bar\", \"hello\":\"goodbye\"}")
+	err = Commit("commit message", "{\"foo\": \"bar\", \"hello\":\"goodbye\"}")
 	assert.Nil(t, err)
 }
 

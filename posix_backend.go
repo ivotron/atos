@@ -52,7 +52,7 @@ func (b PosixBackend) Open() error {
 
 func (b PosixBackend) IsInitialized() bool {
 	_, err := os.Stat(b.snapshotsPath + "/index")
-	return os.IsNotExist(err) == false
+	return err == nil
 }
 func (b PosixBackend) GetStatus() (Status, error) {
 	return Committed, nil
@@ -137,7 +137,7 @@ func createSnapshot(repoPath string,
 
 	args = append(args, "--exclude=.git/")
 
-	if _, err := os.Stat(repoPath + "/.vioignore"); os.IsNotExist(err) == false {
+	if _, err := os.Stat(repoPath + "/.vioignore"); err == nil {
 		args = append(args, "--filter=:-_/.vioignore")
 	}
 

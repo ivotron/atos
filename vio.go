@@ -21,7 +21,6 @@ const (
 
 type version struct {
 	revision  string
-	message   string
 	timestamp time.Time
 	meta      map[string]string
 }
@@ -36,13 +35,11 @@ func NewVersion(revision string) *version {
 		}
 		return &version{
 			revision:  fields[0],
-			message:   "",
 			timestamp: time.Unix(i, 0),
 			meta:      map[string]string{}}
 	} else {
 		return &version{
 			revision:  fields[0],
-			message:   "",
 			timestamp: time.Now(),
 			meta:      map[string]string{}}
 	}
@@ -58,13 +55,11 @@ func NewVersionWithMeta(revision string, meta map[string]string) *version {
 		}
 		return &version{
 			revision:  fields[0],
-			message:   "",
 			timestamp: time.Unix(i, 0),
 			meta:      meta}
 	} else {
 		return &version{
 			revision:  fields[0],
-			message:   "",
 			timestamp: time.Now(),
 			meta:      meta}
 	}
@@ -167,16 +162,17 @@ func load() (b Backend, err error) {
 	return
 }
 
-func Commit(meta string) (err error) {
+func Commit(message string, meta string) (err error) {
 	var t map[string]string
 	err = json.Unmarshal([]byte(meta), &t)
 	if err != nil {
-		return
+		return AnError{"Error while unmarshaling JSON metadata string."}
 	}
 	b, err := load()
 	if err != nil {
 		return
 	}
+	t["message"] = message
 	_, err = b.Commit(t)
 
 	return
@@ -193,10 +189,10 @@ func Log() (logstr string, err error) {
 	}
 	for _, v := range versions {
 		logstr = logstr +
-			fmt.Sprintf("%s-%s %s\n",
+			fmt.Sprintf("%s-%s %s",
 				v.revision,
-				v.timestamp.Format("06/01/02:0700"),
-				v.message)
+				v.timestamp.Format("06/01/02-07:00"),
+				v.meta["message"])
 	}
 	return
 }
