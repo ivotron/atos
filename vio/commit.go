@@ -15,7 +15,7 @@ var commitCmd = &cobra.Command{
 	Short: "Create a commit for unversioned files.",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := vio.Commit(meta, msg); err != nil {
+		if err := vio.Commit(msg, meta); err != nil {
 			log.Fatalln(err.Error())
 		}
 	},

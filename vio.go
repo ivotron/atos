@@ -166,7 +166,7 @@ func Commit(message string, meta string) (err error) {
 	var t map[string]string
 	err = json.Unmarshal([]byte(meta), &t)
 	if err != nil {
-		return AnError{"Error while unmarshaling JSON metadata string."}
+		return AnError{"Error while unmarshaling JSON: " + err.Error()}
 	}
 	b, err := load()
 	if err != nil {
@@ -189,9 +189,9 @@ func Log() (logstr string, err error) {
 	}
 	for _, v := range versions {
 		logstr = logstr +
-			fmt.Sprintf("%s-%s %s",
+			fmt.Sprintf("%s:%s %s\n",
 				v.revision,
-				v.timestamp.Format("06/01/02-07:00"),
+				v.timestamp.Format("060102:1504"),
 				v.meta["message"])
 	}
 	return

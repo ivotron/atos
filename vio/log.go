@@ -17,7 +17,7 @@ var logCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalln(err.Error())
 		}
-		fmt.Println(logstr)
+		fmt.Print(logstr)
 	},
 }
 
