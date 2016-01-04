@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -67,7 +66,7 @@ func NewVersionWithMeta(revision string, meta map[string]string) *version {
 
 func ContainsVersion(vs []version, v *version) bool {
 	for _, v_in := range vs {
-		if reflect.DeepEqual(*v, v_in) {
+		if v_in.revision == v.revision && v_in.timestamp.Unix() == v.timestamp.Unix() {
 			return true
 		}
 	}
@@ -189,10 +188,19 @@ func Log() (logstr string, err error) {
 	}
 	for _, v := range versions {
 		logstr = logstr +
-			fmt.Sprintf("%s:%s %s\n",
+			fmt.Sprintf("%s#%d %s\n",
 				v.revision,
-				v.timestamp.Format("060102:1504"),
+				v.timestamp.Unix(),
 				v.meta["message"])
 	}
 	return
+}
+
+func Checkout(v_str string) (err error) {
+	b, err := load()
+	if err != nil {
+		return
+	}
+	v := NewVersion(v_str)
+	return b.Checkout(v)
 }

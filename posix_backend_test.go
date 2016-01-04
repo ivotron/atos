@@ -151,6 +151,45 @@ func TestPosixBackendCommitWithIgnore(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 }
 
+func TestPosixBackendCheckout(t *testing.T) {
+	path, err := ioutil.TempDir("", "testing")
+	assert.Nil(t, os.Chdir(path))
+
+	createAndSeedTestRepo(t, path, []string{})
+
+	fmt.Println("path: %s\n" + path)
+
+	backend := getNewPosixBackend(t, path)
+
+	err = backend.Init()
+	assert.Nil(t, err)
+
+	err = ioutil.WriteFile(path+"/bar", []byte("yeah"), 0644)
+	assert.Nil(t, err)
+	err = ioutil.WriteFile(path+"/toz", []byte("ok"), 0644)
+	assert.Nil(t, err)
+
+	// commit everything that is ignored or untracked
+	v, err := backend.Commit(map[string]string{})
+	assert.Nil(t, err)
+	assert.NotNil(t, v)
+
+	err = os.Remove(path + "/bar")
+	assert.Nil(t, err)
+	err = os.Remove(path + "/toz")
+	assert.Nil(t, err)
+
+	// v = NewVersion(fmt.Sprintf("%s#%d", v.revision, v.timestamp.Unix()))
+
+	err = backend.Checkout(v)
+	assert.Nil(t, err)
+
+	_, err = os.Stat(path + "/bar")
+	assert.Nil(t, err)
+	_, err = os.Stat(path + "/toz")
+	assert.Nil(t, err)
+}
+
 func TestPosixBackendCommitWithTags(t *testing.T) {
 	path, err := ioutil.TempDir("", "testing")
 	assert.Nil(t, os.Chdir(path))

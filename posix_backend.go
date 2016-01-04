@@ -46,6 +46,23 @@ func (b PosixBackend) Init() (err error) {
 	return
 }
 
+func (b PosixBackend) isRepoOK() (err error) {
+	if !b.IsInitialized() {
+		return AnError{"Uninitialized repository."}
+	}
+
+	hasUncommitted, err := HasUncommittedChanges(b.repoPath)
+
+	if err != nil {
+		return
+	}
+	if hasUncommitted {
+		return AnError{"Uncommitted changes in repo."}
+	}
+
+	return
+}
+
 func (b PosixBackend) Open() error {
 	return nil
 }
@@ -54,27 +71,43 @@ func (b PosixBackend) IsInitialized() bool {
 	_, err := os.Stat(b.snapshotsPath + "/index")
 	return err == nil
 }
+
 func (b PosixBackend) GetStatus() (Status, error) {
 	return Committed, nil
 }
-func (b PosixBackend) Checkout(v *version) error {
-	return AnError{"not yet"}
-}
 
-func (b PosixBackend) Commit(meta map[string]string) (v *version, err error) {
-	if !b.IsInitialized() {
-		return nil, AnError{"Uninitialized repository."}
+func (b PosixBackend) Checkout(v *version) (err error) {
+	if err = b.isRepoOK(); err != nil {
+		return
 	}
 
-	has, err := HasUncommittedChanges(b.repoPath)
-
+	// acquire a lock on the index file
+	flock, err := locking.NewFLock(b.snapshotsPath + "/index")
 	if err != nil {
 		return
 	}
-	if has {
-		return nil, AnError{"Uncommitted changes in repo."}
+	if err = flock.Lock(); err != nil {
+		return
+	}
+	defer flock.Unlock()
+
+	idx, err := b.GetVersions()
+	if err != nil {
+		return
 	}
 
+	if !ContainsVersion(idx, v) {
+		return AnError{
+			fmt.Sprintf("Version %s#%d not in index", v.revision, v.timestamp.Unix())}
+	}
+
+	return checkoutSnapshot(b.repoPath, b.snapshotsPath, v)
+}
+
+func (b PosixBackend) Commit(meta map[string]string) (v *version, err error) {
+	if err = b.isRepoOK(); err != nil {
+		return
+	}
 	versionedFiles, err := GetVersionedFiles(b.repoPath)
 	if err != nil {
 		return
@@ -116,6 +149,33 @@ func (b PosixBackend) Commit(meta map[string]string) (v *version, err error) {
 	return
 }
 
+func checkoutSnapshot(repoPath string, snapsPath string, v *version) (err error) {
+
+	if _, err = os.Stat(snapsPath + "/" + v.revision); err != nil {
+		return
+	}
+
+	unixTime := fmt.Sprintf("%d", v.timestamp.Unix())
+	if _, err = os.Stat(snapsPath + "/" + v.revision + "/" + unixTime); err != nil {
+		return
+	}
+
+	srcPath := snapsPath + "/" + v.revision + "/" + unixTime + "/"
+
+	var args []string
+	args = append(args, "-a")
+
+	// source
+	args = append(args, srcPath)
+
+	// destination
+	args = append(args, repoPath)
+
+	_, err = exec.Command("rsync", args...).CombinedOutput()
+
+	return
+}
+
 func createSnapshot(repoPath string,
 	snapsPath string, v *version, versionedFiles []string) (err error) {
 
@@ -130,7 +190,7 @@ func createSnapshot(repoPath string,
 	destPath := snapsPath + "/" + v.revision + "/" + unixTime
 
 	var args []string
-	args = append(args, "-az")
+	args = append(args, "-a")
 	for _, vfile := range versionedFiles {
 		args = append(args, "--exclude="+vfile)
 	}
