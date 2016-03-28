@@ -163,7 +163,7 @@ func checkoutSnapshot(repoPath string, snapsPath string, v *version) (err error)
 	srcPath := snapsPath + "/" + v.revision + "/" + unixTime + "/"
 
 	var args []string
-	args = append(args, "-a")
+	args = append(args, "-am")
 
 	// source
 	args = append(args, srcPath)
